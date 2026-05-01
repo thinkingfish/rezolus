@@ -24,6 +24,7 @@ struct TrackingAlloc;
 
 static CURRENT: AtomicUsize = AtomicUsize::new(0);
 static PEAK: AtomicUsize = AtomicUsize::new(0);
+static ALLOC_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 unsafe impl GlobalAlloc for TrackingAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
@@ -32,6 +33,7 @@ unsafe impl GlobalAlloc for TrackingAlloc {
         if !ptr.is_null() {
             let new = CURRENT.fetch_add(layout.size(), Ordering::Relaxed) + layout.size();
             PEAK.fetch_max(new, Ordering::Relaxed);
+            ALLOC_COUNT.fetch_add(1, Ordering::Relaxed);
         }
         ptr
     }
@@ -133,12 +135,14 @@ fn measure(path: &str, templates: &[ServiceExtension]) {
     let baseline = CURRENT.load(Ordering::Relaxed);
 
     // ── Load phase ─────────────────────────────────────────────────
+    let allocs_before = ALLOC_COUNT.load(Ordering::Relaxed);
     let load_started = std::time::Instant::now();
     let tsdb = Tsdb::load_from_bytes(Bytes::from(bytes))
         .unwrap_or_else(|e| panic!("load {full:?}: {e}"));
     let load_peak = peak_since(baseline);
     let load_resident = current_since(baseline);
     let load_ms = load_started.elapsed().as_millis();
+    let load_allocs = ALLOC_COUNT.load(Ordering::Relaxed) - allocs_before;
 
     // Reset peak to current resident — we want the query phase's peak
     // to be measured incrementally over what loading already retained.
@@ -161,10 +165,11 @@ fn measure(path: &str, templates: &[ServiceExtension]) {
     eprintln!();
     eprintln!("── {} ────────────────────────────────────", path);
     eprintln!(
-        "  load:        peak {}  resident {}  ({} ms)",
+        "  load:        peak {}  resident {}  ({} ms, {} allocs)",
         mb(load_peak),
         mb(load_resident),
         load_ms,
+        load_allocs,
     );
     eprintln!(
         "  queries:     peak {}  resident {}  ({} queries, {} ms)",
