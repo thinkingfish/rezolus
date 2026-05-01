@@ -2085,7 +2085,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a255e38870562f827388bb244c50d34d6cdc064bd32abbc59ebd0c26b98472e"
 dependencies = [
  "arrow",
- "axum",
  "bytes",
  "histogram",
  "metriken-exposition",
