@@ -63,7 +63,7 @@ linkme = "0.3.36"
 memmap2 = "0.9.10"
 metriken.workspace = true
 metriken-exposition.workspace = true
-metriken-query = { workspace = true, features = ["ingest", "lz4", "http"] }
+metriken-query = { workspace = true, features = ["ingest", "lz4"] }
 notify = "8.2.0"
 open = "5.3.4"
 ouroboros = "0.18.5"
